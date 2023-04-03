@@ -356,20 +356,24 @@ NSString *const RCTTCPErrorDomain = @"RCTTCPErrorDomain";
 
 - (void)socket:(GCDAsyncSocket *)sock
     didAcceptNewSocket:(GCDAsyncSocket *)newSocket {
-    TcpSocketClient *inComing =
-        [[TcpSocketClient alloc] initWithClientId:[_clientDelegate getNextId]
-                                        andConfig:_clientDelegate
-                                        andSocket:newSocket
-                                        andServer:_id];
-    // Store the socket or the connection will be closed
-    [_clientDelegate addClient:inComing];
-    if (_tls) {
-        [newSocket startTLS:_tlsSettings];
-    } else {
-        [_clientDelegate onConnection:inComing toClient:_id];
+    @try {
+        TcpSocketClient *inComing =
+            [[TcpSocketClient alloc] initWithClientId:[_clientDelegate getNextId]
+                                            andConfig:_clientDelegate
+                                            andSocket:newSocket
+                                            andServer:_id];
+        // Store the socket or the connection will be closed
+        [_clientDelegate addClient:inComing];
+        if (_tls) {
+            [newSocket startTLS:_tlsSettings];
+        } else {
+            [_clientDelegate onConnection:inComing toClient:_id];
+        }
+        [newSocket readDataWithTimeout:-1 tag:inComing.id.longValue];
+    } @catch (NSException *exception) {
+          RCTLogWarn(@"didAcceptNewSocket exception %@ %@", exception.name, exception.reason);
+      }
     }
-    [newSocket readDataWithTimeout:-1 tag:inComing.id.longValue];
-}
 
 - (void)socketDidSecure:(GCDAsyncSocket *)sock {
     // Only for TLS
